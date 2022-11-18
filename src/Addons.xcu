@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry"
+	xmlns:xs="http://www.w3.org/2001/XMLSchema" oor:name="Addons" oor:package="org.openoffice.Office">
+	<node oor:name="AddonUI">
+		<node oor:name="OfficeMenuBar">
+			<node oor:name="org.openoffice.Office.addon.Subscription" oor:op="replace">
+				<prop oor:name="Context" oor:type="xs:string">
+					<value>com.sun.star.text.TextDocument,com.sun.star.sheet.SpreadsheetDocument,com.sun.star.presentation.PresentationDocument</value>
+				</prop>
+				<prop oor:name="Title" oor:type="xs:string">
+					<value xml:lang="zh-tw">檔案訂閱通知(~N)</value>
+				</prop>
+				<node oor:name="Submenu">
+					<node oor:name="M1001" oor:op="replace">
+						<prop oor:name="Context" oor:type="xs:string">
+							<value/>
+						</prop>
+						<prop oor:name="Title" oor:type="xs:string">
+							<value xml:lang="en">Subscribe</value>
+							<value xml:lang="zh-TW">訂閱檔案(~S)</value>
+						</prop>
+						<prop oor:name="URL" oor:type="xs:string">
+							<value>vnd.sun.star.script:Subscription.Subscription.SubscribeRun?language=Basic&amp;location=application</value>
+						</prop>
+						<prop oor:name="Target" oor:type="xs:string">
+							<value>_self</value>
+						</prop>
+						<prop oor:name="ImageIdentifier" oor:type="xs:string">
+							<value>%origin%/icons/1</value>
+						</prop>
+					</node>
+					<node oor:name="M1002" oor:op="replace">
+						<prop oor:name="Context" oor:type="xs:string">
+							<value/>
+						</prop>
+						<prop oor:name="Title" oor:type="xs:string">
+							<value xml:lang="en">Manager</value>
+							<value xml:lang="zh-TW">檔案訂閱管理(~M)</value>
+						</prop>
+						<prop oor:name="URL" oor:type="xs:string">
+							<value>vnd.sun.star.script:Subscription.Subscription.ManagerRun?language=Basic&amp;location=application</value>
+						</prop>
+						<prop oor:name="Target" oor:type="xs:string">
+							<value>_self</value>
+						</prop>
+						<prop oor:name="ImageIdentifier" oor:type="xs:string">
+							<value>%origin%/icons/2</value>
+						</prop>
+					</node>
+					<node oor:name="M1003" oor:op="replace">
+						<prop oor:name="Context" oor:type="xs:string">
+							<value/>
+						</prop>
+						<prop oor:name="Title" oor:type="xs:string">
+							<value xml:lang="en">Manual</value>
+							<value xml:lang="zh-TW">手動檔案訂閱通知(~H)</value>
+						</prop>
+						<prop oor:name="URL" oor:type="xs:string">
+							<value>vnd.sun.star.script:Subscription.Subscription.GetUpdateAllApiDataBySelf?language=Basic&amp;location=application</value>
+						</prop>
+						<prop oor:name="Target" oor:type="xs:string">
+							<value>_self</value>
+						</prop>
+						<prop oor:name="ImageIdentifier" oor:type="xs:string">
+							<value>%origin%/icons/3</value>
+						</prop>
+					</node>
+					<node oor:name="M1004" oor:op="replace">
+						<prop oor:name="Context" oor:type="xs:string">
+							<value/>
+						</prop>
+						<prop oor:name="Title" oor:type="xs:string">
+							<value xml:lang="en">Enabled/Disabled</value>
+							<value xml:lang="zh-TW">啟用/停用檔案訂閱通知(~E)</value>
+						</prop>
+						<prop oor:name="URL" oor:type="xs:string">
+							<value>vnd.sun.star.script:Subscription.Subscription.SubscriptionEvent?language=Basic&amp;location=application</value>
+						</prop>
+						<prop oor:name="Target" oor:type="xs:string">
+							<value>_self</value>
+						</prop>
+						<prop oor:name="ImageIdentifier" oor:type="xs:string">
+							<value>%origin%/icons/4</value>
+						</prop>
+					</node>
+				</node><!-- Submenu end -->
+			</node>
+		</node>
+	</node>
+</oor:component-data>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dlg:window PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "dialog.dtd">
+<dlg:window xmlns:dlg="http://openoffice.org/2000/dialog" xmlns:script="http://openoffice.org/2000/script" dlg:id="Manager" dlg:left="204" dlg:top="70" dlg:width="183" dlg:height="110" dlg:closeable="true" dlg:moveable="true" dlg:title="檔案訂閱管理">
+ <dlg:bulletinboard>
+  <dlg:button dlg:id="Manager_Button3" dlg:tab-index="3" dlg:left="92" dlg:top="92" dlg:width="30" dlg:height="12" dlg:value="刪除">
+   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.script:Subscription.Subscription.RemoveSubscribe?language=Basic&amp;location=application" script:language="Script"/>
+  </dlg:button>
+  <dlg:button dlg:id="Manager_Button2" dlg:tab-index="2" dlg:left="52" dlg:top="92" dlg:width="30" dlg:height="12" dlg:tabstop="true" dlg:value="匯出">
+   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.script:Subscription.Subscription.pyExport?language=Basic&amp;location=application" script:language="Script"/>
+  </dlg:button>
+  <dlg:button dlg:id="Manager_Button1" dlg:tab-index="1" dlg:left="10" dlg:top="92" dlg:width="30" dlg:height="12" dlg:value="匯入">
+   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.script:Subscription.Subscription.pyImport?language=Basic&amp;location=application" script:language="Script"/>
+  </dlg:button>
+  <dlg:table dlg:id="Manager_GridControl1" dlg:tab-index="0" dlg:left="10" dlg:top="9" dlg:width="162" dlg:height="75" dlg:showrowheader="true"/>
+  <dlg:button dlg:id="Manager_Button4" dlg:tab-index="4" dlg:left="133" dlg:top="92" dlg:width="30" dlg:height="12" dlg:value="前往">
+   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.script:Subscription.Subscription.pyUseWebBrowser?language=Basic&amp;location=application" script:language="Script"/>
+  </dlg:button>
+ </dlg:bulletinboard>
+</dlg:window>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="NoModelDialog" script:language="StarBasic" script:moduleType="normal">REM  *****  BASIC  *****
+
+Function LoadModelessDialog(sLibName As String, sDialogName As String) As Object
+	Dim oCWP As Object
+	Dim sURL As String
+	Dim oParent As Object
+	Dim oDialog As Object
+	Dim oTopWinListener As Object
+	pDialogName = sDialogName
+	Set oParent = StarDesktop.getCurrentFrame().getContainerWindow()
+	Set oCWP = CreateUnoService(&quot;com.sun.star.awt.ContainerWindowProvider&quot;)
+	Set oTopWinListener = CreateUnoListener(_
+			&quot;Subscription_TopWindow_&quot;, &quot;com.sun.star.awt.XTopWindowListener&quot;)
+
+	sURL = &quot;vnd.sun.star.script:&quot; &amp; sLibName &amp; &quot;.&quot; &amp; sDialogName &amp; &quot;?location=application&quot;
+
+	Set oDialog = oCWP.createContainerWindow(sURL, &quot;&quot;, oParent, Null)
+
+	oDialog.addTopWindowListener(oTopWinListener)
+	LoadModelessDialog = oDialog
+End Function
+
+
+Function Subscription_TopWindow_disposing(e as com.sun.star.lang.EventObject)
+End Function
+
+Function Subscription_TopWindow_windowActivated(e as com.sun.star.lang.EventObject)
+End Function
+
+Function Subscription_TopWindow_windowClosed(e as com.sun.star.lang.EventObject)
+End Function
+
+Function Subscription_TopWindow_windowClosing(e as com.sun.star.lang.EventObject)
+	e.Source.setVisible(False)
+	e.Source.dispose()
+End Function
+
+Function Subscription_TopWindow_windowDeactivated(e as com.sun.star.lang.EventObject)
+End Function
+
+Function Subscription_TopWindow_windowMinimized(e as com.sun.star.lang.EventObject)
+End Function
+
+Function Subscription_TopWindow_windowNormalized(e as com.sun.star.lang.EventObject)
+End Function
+
+Function Subscription_TopWindow_windowOpened(e as com.sun.star.lang.EventObject)
+End Function
+</script:module>

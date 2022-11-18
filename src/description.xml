@@ -1,0 +1,23 @@
+﻿<?xml version='1.0' encoding='UTF-8'?>
+<description
+ xmlns="http://openoffice.org/extensions/description/2006"
+ xmlns:dep="http://openoffice.org/extensions/description/2006"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+	<identifier value="tw.ossii.Subscription"/>
+	
+	<version value="0.0.5"/>
+ 
+	<display-name>
+		<name lang="en">Subscription</name>
+		<name lang="zh-TW">檔案訂閱通知</name>
+	</display-name>
+    
+    <extension-description>
+    <src xml:lang="zh-TW" xlink:href="pkg-desc/description_zh-TW.txt" />
+    <src xml:lang="en-US" xlink:href="pkg-desc/description_en-US.txt" />
+	</extension-description> 
+    
+	<registration>
+	</registration>
+    
+</description>

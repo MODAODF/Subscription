@@ -1,0 +1,927 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="Subscription" script:language="StarBasic">REM  *****  BASIC  *****
+
+Const MODE_GRID_LIST	= 1
+Const MODE_GRID_REMOVE	= 2
+Const MODE_GRID_IMPORT	= 3
+Const PY_SERVICE		= &quot;tw.ossii.Subscription.impl&quot;
+Const DB_TABLE_NAME		= &quot;SUBSCRIBEDATA&quot;
+Const DB_FILE_NAME		= &quot;SubscribeData.odb&quot;
+Const PRODUCT_NAME		= &quot;Subscription&quot;
+
+Const DB_ID				= 2
+Const DB_FN				= 3
+Const DB_URL			= 4
+Const DB_SN				= 5
+Const DB_TS				= 6
+
+Const ADB_ID			= 0
+Const ADB_FN			= 1
+Const ADB_URL			= 2
+Const ADB_SN			= 3
+Const ADB_TS			= 4
+Const ADB_KEEP			= 5
+
+Const API_ID			= 0
+Const API_FN			= 1
+Const API_URL			= 2
+Const API_SN			= 4
+Const API_TS			= 3
+
+REM 只有在應用程式啟動時觸發
+Sub eventListener(event as com.sun.star.document.DocumentEvent)
+	On Error Goto ErrorHandler
+	GetUpdateAllApiData
+ErrorHandler:
+End Sub
+
+Sub SubscriptionEvent() as Boolean
+	&apos;
+	On Error Goto oBad
+	oGlobalEventBroadcaster = createUnoservice(&quot;com.sun.star.frame.GlobalEventBroadcaster&quot;)
+	mEventProps = oGlobalEventBroadcaster.Events.getByName(&quot;OnStartApp&quot;)
+	if mEventProps(1).Value = &quot;&quot; then
+		addSubscriptionEvent
+	else
+		removeSubscriptionEvent
+	end if
+oBad:
+End Sub
+
+Sub addSubscriptionEvent
+	Dim mEventProps(1) as new com.sun.star.beans.PropertyValue
+	mEventProps(0).Name = &quot;EventType&quot;
+	mEventProps(0).Value = &quot;StarBasic&quot;
+	mEventProps(1).Name = &quot;Script&quot;
+	mEventProps(1).Value = &quot;vnd.sun.star.script:Subscription.Subscription.GetUpdateAllApiData?language=Basic&amp;location=application&quot;
+	
+	oGlobalEventBroadcaster = createUnoservice(&quot;com.sun.star.frame.GlobalEventBroadcaster&quot;)
+	oGlobalEventBroadcaster.Events.ReplaceByName(&quot;OnStartApp&quot;, mEventProps())
+	msgbox &quot;已啟用檔案訂閱更新通知&quot;,0,&quot;檔案訂閱通知&quot;
+end sub
+
+Sub removeSubscriptionEvent
+	Dim mEventProps(1) as new com.sun.star.beans.PropertyValue
+	mEventProps(0).Name = &quot;EventType&quot;
+	mEventProps(0).Value = &quot;StarBasic&quot;
+	mEventProps(1).Name = &quot;Script&quot;
+	mEventProps(1).Value = &quot;&quot;
+	
+	oGlobalEventBroadcaster = createUnoservice(&quot;com.sun.star.frame.GlobalEventBroadcaster&quot;)
+	oGlobalEventBroadcaster.Events.ReplaceByName(&quot;OnStartApp&quot;, mEventProps())
+	msgbox &quot;已停用檔案訂閱更新通知&quot;,0,&quot;檔案訂閱通知&quot;
+end sub
+
+Sub UpdateDBDate(timestamp as String, uuid as String, servername as String, mode as String)
+	&apos;
+	&apos;GetSubscribeApiData or GetUpdateAllApiData 後將新資料 Update DB
+	On Error Goto oBad
+	Dim oUser$
+	Dim oPass$
+	Dim oTempName as String
+	Dim oBaseContext as Object
+	&apos;
+	oUser = &quot;&quot;
+	oPass = &quot;&quot;
+	oTempName = ConvertToUrl(GetProjectDataPath())
+	oBaseContext = CreateUnoService(&quot;com.sun.star.sdb.DatabaseContext&quot;)
+	&apos;
+	&apos; Connect with the DataSource
+	Dim oDataSource as Object
+	Dim oCon as Object
+	oDataSource = oBaseContext.getByName(oTempName)
+	oCon = oDataSource.getConnection(oUser, oPass)
+	&apos;
+	Dim oStmt as Object
+	Dim oSQL as String
+	Dim oSQLUpdate as String
+	Dim oResult as Object
+	&apos;
+	oStmt = oCon.createStatement()
+	If mode = &quot;update&quot; Then
+		oSQLUpdate = &quot;UPDATE &quot;&amp; DB_TABLE_NAME &amp; &quot; SET RECORDTIME = &apos;&quot; &amp; timestamp &amp; &quot;&apos; WHERE UUID =&apos;&quot; &amp; uuid &amp; &quot;&apos; AND SERVERNAME=&apos;&quot;&amp; servername &amp;&quot;&apos;;&quot;
+	Else
+		oSQLUpdate = &quot;DELETE FROM &quot;&amp; DB_TABLE_NAME &amp; &quot; WHERE UUID =&apos;&quot; &amp; uuid &amp; &quot;&apos; AND SERVERNAME=&apos;&quot;&amp; servername &amp;&quot;&apos;;&quot;
+	End If
+	&apos;msgbox oSQLUpdate
+	oStmt.executeQuery(oSQLUpdate)
+	&apos;
+	&apos;Base Document Save	
+   	oDataSource.DatabaseDocument.store()
+	&apos;
+	&apos; Unconnect with the Datasource
+	oCon.close()
+	oCon.dispose
+	&apos;
+oBad:
+End Sub
+
+Sub Notify(oDisp as String)
+	&apos; 顯示更新通知
+	msgbox oDisp,0,&quot;檔案訂閱更新通知&quot;
+	&apos;UpdateDBDate()
+End Sub
+
+Sub GetUpdateAllApiDataBySelf()
+	If Not GetUpdateAllApiData Then
+		msgbox &quot;檔案並無更新!&quot;,0,&quot;檔案訂閱更新通知&quot;
+	End If
+End Sub
+
+Sub CheckSubscribeApi()
+	&apos;ToDo 檢查訂閱api內容是否正確
+End Sub
+
+Sub RemoveSubscribe(e)
+	&apos;
+	On Error Goto oBad
+	Dim dlg
+	Dim grid as Object
+	dlg = e.Source.context
+	grid = dlg.getControl(&quot;Manager_GridControl1&quot;)
+	&apos;
+	Dim oRows
+	oRows = grid.CurrentRow + 1
+	&apos;MsgBox &quot;selected row: &quot; &amp; oRows
+	If oRows &gt; 0 Then
+		oAns = Msgbox(&quot;刪除這筆資料?&quot;,4, &quot;刪除確認&quot;)
+	Else
+		msgbox &quot;請選擇檔案&quot;,0,&quot;檔案訂閱通知&quot;
+	End If
+	&apos;
+	If oAns = 6 Then
+		RemoveDBRow(dlg, oRows)
+	End If
+oBad:
+End Sub
+
+
+Sub ExistsDBFile() as Boolean
+	If FileExists(GetProjectDataPath()) Then
+		ExistsDBFile = True
+	Else
+		SubscribeInitDB()
+		CreateDBTable()
+		CleanUpHistory()
+		ExistsDBFile = False
+	End If
+End Sub
+
+Sub SubscribeRun()
+	&apos;
+	ExistsDBFile()
+	Dim oSubscribeRunDialog as Object
+	Dim calbak as Object
+	&apos;
+    oSubscribeRunDialog = LoadModelessDialog(PRODUCT_NAME, &quot;SubscribeDlg&quot;)
+    oSubscribeRunDialog.visible = true
+End Sub
+
+Sub SubscribeSend(e)
+	&apos;
+	On Error Goto oBad
+	Dim dlg, sdata
+	Dim apijson
+	Dim oSQL as String
+	dlg = e.Source.context
+	&apos;msgbox dlg.getControl(&quot;Subscribe_TextField1&quot;).Text
+	sdata = trim(dlg.getControl(&quot;Subscribe_TextField1&quot;).Text)
+	&apos;
+	If sdata = &quot;&quot; Then
+		msgbox &quot;您沒輸入任何資料!&quot;,0,&quot;檔案訂閱通知&quot;
+	Else
+		If dlg.getControl(&quot;Subscribe_Button1&quot;).Model.FocusOnClick = True Then
+			&apos; ToDo check url current
+			apijson = pyGetApi(sdata)
+			oSQL = &quot;INSERT INTO &quot; &amp; DB_TABLE_NAME &amp;_
+				&quot; (UUID,FILENAME,URL,recordtime,servername) VALUES (&apos;&quot; &amp;_
+				 apijson(0) &amp; &quot;&apos;,&apos;&quot; &amp; apijson(1) &amp; &quot;&apos;, &apos;&quot; &amp; apijson(2) &amp; &quot;&apos;,&apos;&quot; &amp; apijson(3) &amp; &quot;&apos;,&apos;&quot; &amp; apijson(4) &amp; &quot;&apos;);&quot;
+			&apos;msgbox oSQL
+			DataInsert(oSQL)
+		EndIf
+	End If
+	dlg.getControl(&quot;Subscribe_TextField1&quot;).Text = &quot;&quot;
+	&apos;dlg.dispose()
+oBad:
+End Sub
+
+Sub ManagerRun()
+	&apos;
+	Dim oRows
+	Dim IsSubscibed as boolean
+	IsSubscibed = False
+	&apos;
+	If ExistsDBFile() Then
+		If GetDataCount() &lt; 1 Then
+			msgbox &quot;您尚未訂閱通知&quot;,0,&quot;檔案訂閱通知&quot;
+			&apos;Exit Sub
+		Else
+			IsSubscibed = True
+		End If
+	Else
+		msgbox &quot;您尚未訂閱通知&quot;,0,&quot;檔案訂閱通知&quot;
+		&apos;Exit Sub
+	End If
+	&apos;
+	Dim oManagerRunDialog as Object
+	&apos;
+	oManagerRunDialog = LoadModelessDialog(PRODUCT_NAME, &quot;ManagerDlg&quot;)
+    oManagerRunDialog.visible = true
+
+    If Not IsSubscibed Then
+    	&apos;msgbox &quot;close export button&quot;
+    	EnableManagerRunButton(oManagerRunDialog, False)
+    End If
+
+    UpdateGridList(oManagerRunDialog, MODE_GRID_LIST)
+End Sub
+
+Sub UpdateGridList(dlg as Object, mode as Integer)
+	&apos;
+	On Error Goto oBad
+	Dim grid as Object
+	Dim oGridModel as Object
+	Dim oDataModel as Object
+	Dim oColumModel as Object
+	&apos;Dim oColumn1, oColumn2, oColumn3, oColumn4, oColumn5 as Object
+	Dim oColumn3, oColumn5 as Object
+	&apos;
+	grid = dlg.getControl(&quot;Manager_GridControl1&quot;)
+    oGridModel = grid.Model
+    oDataModel = oGridModel.GridDataModel
+    oColumModel = oGridModel.ColumnModel
+    &apos;
+    &apos; clear all rows
+    oDataModel.removeAllRows()
+    
+    If mode = MODE_GRID_LIST Then
+	    &apos;
+	    &apos; 欄位名稱設定
+		&apos;oColumn1 = createUnoService( &quot;com.sun.star.awt.grid.GridColumn&quot;)
+		&apos;oColumn1.Title = &quot;編號&quot;
+		&apos;oColumn1.MaxWidth = 10
+		&apos;oColumn2 = createUnoService( &quot;com.sun.star.awt.grid.GridColumn&quot;)
+		&apos;oColumn2.Title = &quot;UUID&quot;
+		&apos;oColumn2.MaxWidth = 40
+		oColumn3 = createUnoService( &quot;com.sun.star.awt.grid.GridColumn&quot;)
+		oColumn3.Title = &quot;檔案名稱&quot;
+		oColumn3.MaxWidth = 89
+		&apos;oColumn4 = createUnoService( &quot;com.sun.star.awt.grid.GridColumn&quot;)
+		&apos;oColumn4.Title = &quot;URL&quot;
+		&apos;oColumn4.MaxWidth = 70
+		oColumn5 = createUnoService( &quot;com.sun.star.awt.grid.GridColumn&quot;)
+		oColumn5.Title = &quot;更新時間&quot;
+		oColumn5.MaxWidth = 70
+		&apos;oColumModel.addColumn( oColumn1 )
+		&apos;oColumModel.addColumn( oColumn2 )
+		oColumModel.addColumn( oColumn3 )
+		&apos;oColumModel.addColumn( oColumn4 )
+		oColumModel.addColumn( oColumn5 )
+	End If
+	&apos;
+	&apos;first parameter is for header title if row header exists, else put empty string
+	Dim oUser$
+	Dim oPass$
+	Dim oTempName as String
+	Dim oBaseContext as Object
+	oUser = &quot;&quot;
+	oPass = &quot;&quot;
+	oTempName = ConvertToUrl(GetProjectDataPath())
+	oBaseContext = CreateUnoService(&quot;com.sun.star.sdb.DatabaseContext&quot;)
+	&apos;
+	&apos; Connect with the DataSource
+	Dim oDataSource as Object
+	Dim oCon as Object
+	oDataSource = oBaseContext.getByName(oTempName)
+	oCon = oDataSource.getConnection(oUser, oPass)
+	&apos;
+	Dim oStmt as Object
+	Dim oSQL as String
+	Dim oResult as Object
+	Dim oTimeStamp as String
+
+	oStmt = oCon.createStatement()
+  	oSQL = &quot;SELECT * FROM &quot; &amp; DB_TABLE_NAME &amp; &quot;;&quot;
+  	oResult = oStmt.executeQuery(oSQL)
+  	Dim index as Integer
+  	index = 1
+  	While oResult.next()
+		oTimeStamp = CDate(oResult.getString(6))
+	  	oDataModel.addRow(index , Array(oResult.getString(3), oTimeStamp))
+	  	index = index + 1
+  	Wend
+  	&apos;
+	&apos; Unconnect with the Datasource
+	oCon.close()
+	oCon.dispose
+	&apos;
+	If mode = MODE_GRID_IMPORT Then
+		EnableManagerRunButton(dlg, True)
+	End If
+	&apos;
+	If mode = MODE_GRID_REMOVE And index = 1 Then
+		EnableManagerRunButton(dlg, False)
+	End If
+oBad:
+End Sub
+
+Sub SubscribeInitDB()
+	&apos;
+	On Error Goto oBad
+	Dim oDoc as Object, oDataSource as Object
+	Dim Dummy()
+	oDoc = StarDesktop.loadComponentFromURL( &quot;private:factory/sdatabase&quot;, &quot;_default&quot;, 0, Dummy())
+	oDataSource = oDoc.DataSource
+	&apos; set to use firebird
+	oDataSource.URL = &quot;sdbc:embedded:firebird&quot;
+	oFileName = GetProjectDataPath()
+	oBName = ConvertToUrl(oFileName)
+	oDoc.storeAsURL(oBName, Dummy())
+	oDoc.close(True)
+oBad:
+End Sub
+
+Sub CreateDBTable()
+	&apos;
+	On Error Goto oBad
+	Dim oUser$
+	Dim oPass$
+	Dim oTempName as String
+	Dim oBaseContext as Object
+	&apos;
+	oUser = &quot;&quot;
+	oPass = &quot;&quot;
+	oTempName = ConvertToUrl(GetProjectDataPath())
+	oBaseContext = CreateUnoService(&quot;com.sun.star.sdb.DatabaseContext&quot;)
+	&apos; Connect with the DataSource
+	Dim oDataSource as Object
+	Dim oCon as Object
+	oDataSource = oBaseContext.getByName(oTempName)
+	oCon = oDataSource.getConnection(oUser, oPass)
+	&apos;
+	Dim oStmt as Object
+  	Dim oSQL as String
+ 	oStmt = oCon.createStatement()
+	oSQL = &quot;CREATE TABLE &quot; &amp; DB_TABLE_NAME &amp;_
+		&quot; (ID INTEGER generated by default as identity primary key, &quot;&amp;_
+		&quot;UUID VARCHAR(50) NOT NULL, &quot;&amp;_
+		&quot;FILENAME VARCHAR(50) NOT NULL, &quot;&amp;_
+		&quot;URL VARCHAR(150) NOT NULL UNIQUE, &quot;&amp;_
+		&quot;SERVERNAME VARCHAR(100) NOT NULL, &quot;&amp;_
+		&quot;recordtime TIMESTAMP);&quot;
+	oStmt.execute(oSQL)
+	&apos;
+	&apos;Base Document Save	
+   	oDataSource.DatabaseDocument.store()
+	&apos; Unconnect with the Datasource
+	oCon.close()
+	oCon.dispose
+	&apos;msgbox &quot;Success&quot;,0,&quot;CreateDBTable&quot;
+oBad:
+End Sub
+
+Sub RemoveDBRow(dlg as Object, selectrow as Integer)
+	&apos;
+	On Error Goto oBad
+	Dim oUser$
+	Dim oPass$
+	Dim oTempName as String
+	Dim oBaseContext as Object
+	&apos;
+	oUser = &quot;&quot;
+	oPass = &quot;&quot;
+	oTempName = ConvertToUrl(GetProjectDataPath())
+	oBaseContext = CreateUnoService(&quot;com.sun.star.sdb.DatabaseContext&quot;)
+	&apos;
+	&apos; Connect with the DataSource
+	Dim oDataSource as Object
+	Dim oCon as Object
+	oDataSource = oBaseContext.getByName(oTempName)
+	oCon = oDataSource.getConnection(oUser, oPass)
+	&apos;
+	Dim oStmt as Object
+	Dim oSQLdel as String
+	Dim oResult as Object
+	Dim index as Integer
+	index = 1
+	oStmt = oCon.createStatement()
+	oSQL = &quot;SELECT * FROM &quot; &amp; DB_TABLE_NAME &amp; &quot;;&quot;
+	oResult = oStmt.executeQuery(oSQL)
+	For i = 1 To selectrow
+		oResult.next()
+	Next i
+	&apos;msgbox oResult.getString(1)
+	oSQLdel = &quot;DELETE FROM &quot; &amp; DB_TABLE_NAME &amp; &quot; WHERE ID = &quot; &amp; oResult.getString(1) &amp; &quot;;&quot;
+	oStmt.executeQuery(oSQLdel)
+	&apos;
+	&apos;Base Document Save	
+   	oDataSource.DatabaseDocument.store()
+	&apos;
+	&apos; Unconnect with the Datasource
+	oCon.close()
+	oCon.dispose
+	&apos;msgbox &quot;Success&quot;,0,&quot;RemoveDBRow&quot;
+	&apos;
+	UpdateGridList(dlg, MODE_GRID_REMOVE)
+oBad:
+End Sub
+
+Sub RunDBRow(dlg as Object, selectrow as Integer) as String
+	&apos;
+	On Error Goto oBad
+	Dim oUser$
+	Dim oPass$
+	Dim oTempName as String
+	Dim oBaseContext as Object
+	&apos;
+	oUser = &quot;&quot;
+	oPass = &quot;&quot;
+	oTempName = ConvertToUrl(GetProjectDataPath())
+	oBaseContext = CreateUnoService(&quot;com.sun.star.sdb.DatabaseContext&quot;)
+	&apos;
+	&apos; Connect with the DataSource
+	Dim oDataSource as Object
+	Dim oCon as Object
+	oDataSource = oBaseContext.getByName(oTempName)
+	oCon = oDataSource.getConnection(oUser, oPass)
+	&apos;
+	Dim oStmt as Object
+	Dim oSQLdel as String
+	Dim oResult as Object
+	Dim index as Integer
+	index = 1
+	oStmt = oCon.createStatement()
+	oSQL = &quot;SELECT * FROM &quot; &amp; DB_TABLE_NAME &amp; &quot;;&quot;
+	oResult = oStmt.executeQuery(oSQL)
+	For i = 1 To selectrow
+		oResult.next()
+	Next i
+	RunDBRow = oResult.getString(4)
+	&apos;
+	&apos; Unconnect with the Datasource
+	oCon.close()
+	oCon.dispose
+	&apos;msgbox &quot;Success&quot;,0,&quot;RunDBRow&quot;
+	&apos;
+	dlg.dispose()
+oBad:
+End Sub
+
+Sub GetUpdateApiData()
+	&apos;
+	&apos;開啟程式後根據資料庫的訂閱內容 取得 API server 是否有更新
+	On Error Goto oBad
+	If ExistsDBFile() Then
+		If GetDataCount() &lt; 1 Then
+			&apos;msgbox &quot;您尚未訂閱通知&quot;
+			Exit Sub
+		End If
+	Else
+		&apos;msgbox &quot;您尚未訂閱通知&quot;
+		Exit Sub
+	End If
+	&apos;
+	Dim oUser$
+	Dim oPass$
+	Dim oTempName as String
+	Dim oBaseContext as Object
+	&apos;
+	oUser = &quot;&quot;
+	oPass = &quot;&quot;
+	oTempName = ConvertToUrl(GetProjectDataPath())
+	oBaseContext = CreateUnoService(&quot;com.sun.star.sdb.DatabaseContext&quot;)
+	&apos;
+	&apos; Connect with the DataSource
+	Dim oDataSource as Object
+	Dim oCon as Object
+	oDataSource = oBaseContext.getByName(oTempName)
+	oCon = oDataSource.getConnection(oUser, oPass)
+	&apos;
+	Dim oStmt as Object
+	Dim oSQL as String
+	Dim oResult as Object
+	Dim oDisp as String
+	Dim Notifies as Boolean
+	Notifies = False
+	oStmt = oCon.createStatement()
+	oSQL = &quot;SELECT * FROM &quot; &amp; DB_TABLE_NAME &amp; &quot;;&quot;
+	oResult = oStmt.executeQuery(oSQL)
+	While oResult.next()
+		apijson = pyGetApi(oResult.getString(4))
+		If CDate(oResult.getString(5)) &lt; CDate(apijson(3)) Then
+	    	&apos;msgbox oResult.getString(2) &amp; &quot; update&quot;
+	    	&apos;notify update
+	    	oDisp = oDisp + oResult.getString(3) &amp; Chr$(9) &amp; &quot;有更新&quot; &amp; Chr$(10)
+	    	Notifies = True
+	  	End If
+  	WEnd
+	&apos;
+	&apos; Unconnect with the Datasource
+	oCon.close()
+	oCon.dispose
+	&apos;
+	If Notifies Then
+		Notify(oDisp)
+	End If
+oBad:
+End Sub
+
+Sub GetUpdateAllApiData() as Boolean
+	&apos;
+	&apos;開啟程式後根據資料庫的訂閱內容 取得 API server 是否有更新
+	On Error Goto oBad
+	If ExistsDBFile() Then
+		If GetDataCount() &lt; 1 Then
+			&apos;msgbox &quot;您尚未訂閱通知&quot;
+			Exit Sub
+		End If
+	Else
+		&apos;msgbox &quot;您尚未訂閱通知&quot;
+		Exit Sub
+	End If
+	&apos;
+	Dim oUser$
+	Dim oPass$
+	Dim oTempName as String
+	Dim oBaseContext as Object
+	oUser = &quot;&quot;
+	oPass = &quot;&quot;
+	oTempName = ConvertToUrl(GetProjectDataPath())
+	oBaseContext = CreateUnoService(&quot;com.sun.star.sdb.DatabaseContext&quot;)
+	&apos;
+	&apos; Connect with the DataSource
+	Dim oDataSource as Object
+	Dim oCon as Object
+	oDataSource = oBaseContext.getByName(oTempName)
+	oCon = oDataSource.getConnection(oUser, oPass)
+	&apos;
+	Dim oStmt as Object
+	Dim oSQL as String
+	Dim oSQL2 as String
+	Dim oResult as Object
+	Dim oDisp as String
+	Dim Notifies as Boolean
+	Notifies = False
+	&apos;
+	oStmt = oCon.createStatement()
+	oSQL = &quot;SELECT DISTINCT SERVERNAME FROM &quot; &amp; DB_TABLE_NAME &amp; &quot;;&quot;
+	oResult = oStmt.executeQuery(oSQL)
+	&apos;
+	&apos; 計算 DB data 中有多少 servername
+	GlobalScope.BasicLibraries.LoadLibrary(&quot;ScriptForge&quot;)
+	Dim oArr as Object
+	Dim oServername as Variant
+	oArr = CreateScriptService(&quot;Array&quot;)
+	oServername = Array()
+	While oResult.next()
+		oServername = oArr.Append(oServername,oResult.getString(1) &amp; &quot;/index.php/apps/filesubscription/status&quot;)
+  	WEnd
+	&apos;
+	&apos; 將 DB data 存入 oAllDBdata Array()
+	Dim oAllDBdata as Variant
+	oAllDBdata = Array()
+	oSQL2 = &quot;SELECT * FROM &quot; &amp; DB_TABLE_NAME &amp; &quot;;&quot;
+	oResult2 = oStmt.executeQuery(oSQL2)
+	While oResult2.next()
+		oAllDBdata = oArr.Append(oAllDBdata,Array(_
+		oResult2.getString(DB_ID),oResult2.getString(DB_FN),oResult2.getString(DB_URL),oResult2.getString(DB_SN),oResult2.getString(DB_TS),&quot;0&quot;))
+	WEnd
+	&apos;
+	Dim oAllApidata as Variant
+	oAllApidata = Array()
+	For i = 0 To Ubound(oServername)
+		apijson = pyGetAllApi(oServername(i))
+		&apos;msgbox Ubound(apijson)
+		For j = 0 To Ubound(apijson)
+			oAllApidata = oArr.Append(oAllApidata,Array(_
+			apijson(j)(API_ID),apijson(j)(API_FN),apijson(j)(API_URL),apijson(j)(API_TS),apijson(j)(API_SN)))
+		Next j
+  	Next i
+	&apos;
+	&apos;if found it then check timestamp and update message,DB
+	For k = 0 To Ubound(oAllApidata)
+		&apos;
+		For m = 0 To Ubound(oAllDBdata)
+			&apos;msgbox oAllApidata(k)(API_ID)
+			&apos;msgbox &quot;[&quot;&amp; m &amp;&quot;]: &quot; &amp; oAllDBdata(m)(ADB_ID)
+			If oAllApidata(k)(API_ID) = oAllDBdata(m)(ADB_ID) And oAllApidata(k)(API_SN) = oAllDBdata(m)(ADB_SN) Then
+				&apos;update keep
+				oAllDBdata(m)(ADB_KEEP) = &quot;1&quot;
+				If CDate(oAllApidata(k)(API_TS)) &gt; CDate(oAllDBdata(m)(ADB_TS)) Then
+					&apos;notify update
+					oDisp = oDisp + oAllDBdata(m)(ADB_FN) &amp; Chr$(9) &amp; Chr$(9) &amp; &quot;有更新&quot; &amp; Chr$(10)
+					Notifies = True
+					&apos;update DB data
+					UpdateDBDate(CDate(oAllApidata(k)(API_TS)),oAllDBdata(m)(ADB_ID),oAllDBdata(m)(ADB_SN),&quot;update&quot;)
+					Exit For
+				End If
+			End If
+		Next m
+	Next k
+	&apos;
+	&apos;update DB for unsubscribe
+	For x = 0 To Ubound(oAllDBdata)
+		If oAllDBdata(x)(ADB_KEEP) = &quot;0&quot; Then
+			&apos;msgbox oAllDBdata(x)(API_ID)
+			&apos;notify update
+			oDisp = oDisp + oAllDBdata(x)(ADB_FN) &amp; Chr$(9) &amp; Chr$(9) &amp; &quot;已取消分享&quot; &amp; Chr$(10)
+			Notifies = True
+			&apos;update DB data
+			UpdateDBDate(CDate(oAllDBdata(x)(ADB_TS)),oAllDBdata(x)(ADB_ID),oAllDBdata(x)(ADB_SN),&quot;remove&quot;)
+		End If
+	Next x
+	&apos;
+	&apos; Unconnect with the Datasource
+	oCon.close()
+	oCon.dispose
+	&apos;
+	If Notifies Then
+		Notify(oDisp)
+		GetUpdateAllApiData = True
+	Else
+		GetUpdateAllApiData = False
+	End If
+oBad:
+End Sub
+
+Sub GetDataCount() as Integer
+	&apos;
+	On Error Goto oBad
+	Dim oUser$
+	Dim oPass$
+	Dim oTempName as String
+	Dim oBaseContext as Object
+	&apos;
+	oUser = &quot;&quot;
+	oPass = &quot;&quot;
+	oTempName = ConvertToUrl(GetProjectDataPath())
+	oBaseContext = CreateUnoService(&quot;com.sun.star.sdb.DatabaseContext&quot;)
+	&apos;
+	&apos; Connect with the DataSource
+	Dim oDataSource as Object
+	Dim oCon as Object
+	oDataSource = oBaseContext.getByName(oTempName)
+	oCon = oDataSource.getConnection(oUser, oPass)
+	&apos;
+	Dim oStmt as Object
+	Dim oSQLcount as String
+	Dim oResult as Object
+	oStmt = oCon.createStatement()
+	oSQLcount = &quot;SELECT COUNT(*) FROM &quot; &amp; DB_TABLE_NAME &amp; &quot;;&quot;
+	oResult = oStmt.executeQuery(oSQLcount)
+	oResult.next()
+	GetDataCount = CInt(oResult.getString(1))
+	&apos;
+	&apos; Unconnect with the Datasource
+	oCon.close()
+	oCon.dispose
+	&apos;msgbox &quot;Success&quot;,0,&quot;CreateDBTable&quot;
+oBad:
+End Sub
+
+Sub DataInsert(data as String)
+	&apos;
+	On Error Goto oBad
+	Dim oDoc as Object
+	Dim oBaseContext as Object
+	Dim oUser$
+	Dim oPass$
+	Dim oTempName as String
+	Dim oFlag as Integer
+	oFlag = 0
+	Dim Dummy() as New com.sun.star.beans.PropertyValue
+		&apos;
+		oTempName = ConvertToUrl(GetProjectDataPath())
+		oUser = &quot;&quot;
+		oPass = &quot;&quot;
+		oBaseContext = CreateUnoService(&quot;com.sun.star.sdb.DatabaseContext&quot;)
+		&apos; Connect with the DataSource
+		Dim oDataSource as Object
+		Dim oCon as Object
+			oDataSource = oBaseContext.getByName(oTempName)
+			oCon = oDataSource.getConnection(oUser, oPass)
+			oFlag = 777
+		Dim oStmt as Object
+		&apos;
+		oStmt = oCon.createStatement()
+  		oStmt.execute(data)
+		&apos;
+		&apos;Base Document Save	
+    	oDataSource.DatabaseDocument.store()
+    	&apos;
+    	&apos; Unconnect with the Datasource
+		oCon.close()
+		oCon.dispose
+		msgbox &quot;訂閱成功!&quot;,0,&quot;檔案訂閱通知&quot;
+		Exit Sub
+oBad:
+	If oFlag = 777 Then
+		oCon.Close()
+ 		oCon.dispose
+	End If
+	Dim oErLine as Integer
+	Dim oErNum as Integer
+	Dim oErMsg as String
+		oErLine = Erl
+		oErNum = Err
+		oErMsg = Error
+	If oErNum = 1 Then
+		msgbox &quot;資料有誤~請重新輸入&quot; &amp; Chr$(10) &amp; &quot;或重新啟動應用工具~&quot;,0,&quot;檔案訂閱通知&quot;
+	End If
+End Sub
+
+Sub GetProjectName() as String
+	GetProjectName = PRODUCT_NAME
+End Sub
+
+Sub GetTableName() as String
+	GetTableName = DB_TABLE_NAME
+End Sub
+
+Sub GetProjectDataPath() as String
+	&apos;
+	GetProjectDataPath = Environ(&quot;APPDATA&quot;) &amp; &quot;\&quot; &amp; GetProjectName &amp; &quot;\Data\&quot; &amp; DB_FILE_NAME
+	&apos;msgbox GetProjectDataPath
+End Sub
+
+
+Sub EnableManagerRunButton(dlg as Object, enable as Boolean)
+	&apos;
+  	dlg.getControl(&quot;Manager_Button2&quot;).setEnable(enable)
+  	dlg.getControl(&quot;Manager_Button3&quot;).setEnable(enable)
+  	dlg.getControl(&quot;Manager_Button4&quot;).setEnable(enable)
+End Sub
+
+REM *****
+REM **SubscribeImp: UseWebBrowser
+REM *****
+Function pyUseWebBrowser(e)
+	&apos;
+	On Local Error GoTo err
+	Dim obj, arg
+	Dim dlg
+	Dim grid as Object
+	dlg = e.Source.context
+	grid = dlg.getControl(&quot;Manager_GridControl1&quot;)
+	&apos;
+	Dim oRows
+	oRows = grid.CurrentRow + 1
+	If oRows &gt; 0 Then
+		url = RunDBRow(dlg, oRows)
+	Else
+		msgbox &quot;請選擇檔案&quot;,0,&quot;檔案訂閱通知&quot;
+	End If
+	
+	obj = createunoservice(PY_SERVICE)
+	&apos;url = &quot;https://101352e6-6d09-4e98-8815-21acbe298568.mock.pstmn.io/get&quot;
+	If Not isNull(obj) Then
+		arg = MakeNamedValue(&quot;UseWebBrowser&quot;, url)
+		pyUseWebBrowser() = obj.execute(array(arg))
+	End If
+	Exit Function
+err:
+	&apos;msgbox &quot;API伺服器錯誤! (資料有誤或伺服器沒回應)&quot;,0,&quot;檔案訂閱通知&quot;
+End Function
+
+REM *****
+REM **SubscribeImp: GetApi
+REM *****
+Function pyGetApi(url)
+	&apos;
+	On Local Error GoTo err
+	Dim obj, arg
+	obj = createunoservice(PY_SERVICE)
+	If Not isNull(obj) Then
+		arg = MakeNamedValue(&quot;GetApi&quot;, url)
+		pyGetApi() = obj.execute(array(arg))
+	End If
+	Exit Function
+err:
+	&apos;msgbox &quot;API伺服器錯誤! (資料有誤或伺服器沒回應)&quot;,0,&quot;檔案訂閱通知&quot;
+End Function
+
+REM *****
+REM **SubscribeImp: GetAllApi
+REM *****
+Function pyGetAllApi(url)
+	&apos;
+	&apos;msgbox &quot;pyGetAllApi&quot;
+	On Local Error GoTo err
+	Dim obj, arg
+	obj = createunoservice(PY_SERVICE)
+	If Not isNull(obj) Then
+		arg = MakeNamedValue(&quot;GetAllApi&quot;, url)
+		pyGetAllApi() = obj.execute(array(arg))
+	End If
+	Exit Function
+err:
+	&apos;msgbox &quot;API伺服器錯誤! (資料有誤或伺服器沒回應)&quot;,0,&quot;檔案訂閱通知&quot;
+End Function
+
+REM *****
+REM **SubscribeImp: Import
+REM *****
+Function pyImport(e)
+	&apos;
+	On Local Error GoTo err
+	Dim obj, arg
+	Dim dlg
+	&apos;
+	dlg = e.Source.context
+	obj = createunoservice(PY_SERVICE)
+	If Not isNull(obj) Then
+		arg = MakeNamedValue(&quot;Import&quot;, &quot;&quot;)
+		pyImport() = obj.execute(array(arg))
+	End If
+	&apos;dlg.dispose()
+	If (pyImport) Then
+		UpdateGridList(dlg, MODE_GRID_IMPORT)
+	End If
+	Exit Function
+err:
+	&apos;msgbox &quot;API伺服器錯誤! (資料有誤或伺服器沒回應)&quot;,0,&quot;檔案訂閱通知&quot;
+End Function
+
+REM *****
+REM **SubscribeImp: Export
+REM *****
+Function pyExport(e)
+	&apos;
+	On Local Error GoTo err
+	Dim obj, arg
+	&apos;Dim dlg
+	&apos;dlg = e.Source.context
+	obj = createunoservice(PY_SERVICE)
+	If Not isNull(obj) Then
+		arg = MakeNamedValue(&quot;Export&quot;, &quot;&quot;)
+		pyExport() = obj.execute(array(arg))
+	End If
+	&apos;dlg.dispose()
+	Exit Function
+err:
+	&apos;msgbox &quot;API伺服器錯誤! (資料有誤或伺服器沒回應)&quot;,0,&quot;檔案訂閱通知&quot;
+End Function
+
+REM *****
+REM **Create and return a new com.sun.star.beans.NamedValue.
+REM *****
+Function MakeNamedValue( Optional cName As String, Optional uValue ) As com.sun.star.beans.NamedValue
+	&apos;
+	On Error Goto oBad
+	dim oPropertyValue
+
+	oPropertyValue = createUnoStruct(&quot;com.sun.star.beans.NamedValue&quot;)
+	If Not IsMissing(cName) Then
+		oPropertyValue.Name = cName
+	EndIf
+	If Not IsMissing(uValue) Then
+		oPropertyValue.Value = uValue
+	EndIf
+	MakeNamedValue() = oPropertyValue
+oBad:
+End Function
+
+Sub CleanUpHistory()
+	&apos;
+	On Error Goto oBad
+	Const oItemList$ = &quot;/org.openoffice.Office.Histories/Histories/org.openoffice.Office.Histories:HistoryInfo[&apos;PickList&apos;]/ItemList/&quot;
+	Const oOrderList$ = &quot;/org.openoffice.Office.Histories/Histories/org.openoffice.Office.Histories:HistoryInfo[&apos;PickList&apos;]/OrderList/&quot;
+	oItem =  ConvertToUrl(GetProjectDataPath())
+	&apos;
+	&apos; remove/modify OrderList
+	oNodeOrderList = modifyUserProfile(oOrderList$)
+	nlist = oNodeOrderList.getElementNames()
+	Dim val, i
+	For i = 0 To UBound(nlist)
+		val = oNodeOrderList.getByName(CStr(i)).getByName(&quot;HistoryItemRef&quot;)
+		&apos;msgbox val
+		If val = oItem or val = &quot;SubscribeData&quot; Then
+			If i = UBound(nlist) Then
+				&apos; remove ItemList
+				oNodeItemList = modifyUserProfile(oItemList$)
+				oNodeItemList.removeByName( oItem )
+				oNodeItemList.commitChanges()
+				oNodeOrderList.removeByName( CStr(i) )
+			Else
+				oNodeOrderList.getByName(CStr(i)).HistoryItemRef = &quot;SubscribeData&quot;
+			End If
+			oNodeOrderList.commitChanges()
+		End If
+	Next i
+	&apos;
+	Exit Sub
+oBad:
+End Sub
+
+Function modifyUserProfile(sNodePath$)
+	&apos;
+	On Error Goto oBad
+	Dim aConfigProvider, oNode, args(0) As new com.sun.star.beans.PropertyValue
+  		aConfigProvider = createUnoService(&quot;com.sun.star.configuration.ConfigurationProvider&quot;)
+  		args(0).Name = &quot;nodepath&quot;
+  		args(0).Value = sNodePath
+  		modifyUserProfile = aConfigProvider.createInstanceWithArguments(&quot;com.sun.star.configuration.ConfigurationUpdateAccess&quot;, args())
+oBad:
+End Function
+</script:module>
