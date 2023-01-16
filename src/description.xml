@@ -5,7 +5,7 @@
  xmlns:xlink="http://www.w3.org/1999/xlink">
 	<identifier value="tw.ossii.Subscription"/>
 	
-	<version value="0.0.5"/>
+	<version value="0.0.6"/>
  
 	<display-name>
 		<name lang="en">Subscription</name>
