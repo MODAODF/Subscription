@@ -741,7 +741,12 @@ End Sub
 
 Sub GetProjectDataPath() as String
 	&apos;
-	GetProjectDataPath = Environ(&quot;APPDATA&quot;) &amp; &quot;\&quot; &amp; GetProjectName &amp; &quot;\Data\&quot; &amp; DB_FILE_NAME
+	Select Case name_os()
+		Case &quot;WNT&quot;
+			GetProjectDataPath = Environ(&quot;APPDATA&quot;) &amp; &quot;\&quot; &amp; GetProjectName &amp; &quot;\Data\&quot; &amp; DB_FILE_NAME
+		Case &quot;MACOSX&quot;
+			GetProjectDataPath = Environ(&quot;HOME&quot;) &amp; &quot;/Library/Application Support/&quot; &amp; GetProjectName &amp; &quot;/Data/&quot; &amp; DB_FILE_NAME
+	End Select
 	&apos;msgbox GetProjectDataPath
 End Sub
 
@@ -751,6 +756,16 @@ Sub EnableManagerRunButton(dlg as Object, enable as Boolean)
   	dlg.getControl(&quot;Manager_Button2&quot;).setEnable(enable)
   	dlg.getControl(&quot;Manager_Button3&quot;).setEnable(enable)
   	dlg.getControl(&quot;Manager_Button4&quot;).setEnable(enable)
+End Sub
+
+Sub name_os() as String
+	Dim OSname as String
+	Dim array_name(0)
+		array_name(0)=&quot;system&quot;
+		ShtFnc = CreateUnoService(&quot;com.sun.star.sheet.FunctionAccess&quot;)
+		OSname = ShtFnc.callFunction(&quot;INFO&quot;,array_name())
+		&apos;msgbox(OSname)
+		name_os = OSname
 End Sub
 
 REM *****
