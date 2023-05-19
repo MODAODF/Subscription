@@ -746,6 +746,8 @@ Sub GetProjectDataPath() as String
 			GetProjectDataPath = Environ(&quot;APPDATA&quot;) &amp; &quot;\&quot; &amp; GetProjectName &amp; &quot;\Data\&quot; &amp; DB_FILE_NAME
 		Case &quot;MACOSX&quot;
 			GetProjectDataPath = Environ(&quot;HOME&quot;) &amp; &quot;/Library/Application Support/&quot; &amp; GetProjectName &amp; &quot;/Data/&quot; &amp; DB_FILE_NAME
+		Case &quot;LINUX&quot;
+			GetProjectDataPath = Environ(&quot;HOME&quot;) &amp; &quot;/.config/&quot; &amp; GetProjectName &amp; &quot;/Data/&quot; &amp; DB_FILE_NAME
 	End Select
 	&apos;msgbox GetProjectDataPath
 End Sub
