@@ -621,16 +621,16 @@ Sub GetUpdateAllApiData() as Boolean
 	Next k
 	&apos;
 	&apos;update DB for unsubscribe
-	For x = 0 To Ubound(oAllDBdata)
-		If oAllDBdata(x)(ADB_KEEP) = &quot;0&quot; Then
-			&apos;msgbox oAllDBdata(x)(API_ID)
+	For xxx = 0 To Ubound(oAllDBdata)
+		If oAllDBdata(xxx)(ADB_KEEP) = &quot;0&quot; Then
+			&apos;msgbox oAllDBdata(xxx)(API_ID)
 			&apos;notify update
-			oDisp = oDisp + oAllDBdata(x)(ADB_FN) &amp; Chr$(9) &amp; Chr$(9) &amp; &quot;已取消分享&quot; &amp; Chr$(10)
+			oDisp = oDisp + oAllDBdata(xxx)(ADB_FN) &amp; Chr$(9) &amp; Chr$(9) &amp; &quot;已取消分享&quot; &amp; Chr$(10)
 			Notifies = True
 			&apos;update DB data
-			UpdateDBDate(CDate(oAllDBdata(x)(ADB_TS)),oAllDBdata(x)(ADB_ID),oAllDBdata(x)(ADB_SN),&quot;remove&quot;)
+			UpdateDBDate(CDate(oAllDBdata(xxx)(ADB_TS)),oAllDBdata(xxx)(ADB_ID),oAllDBdata(xxx)(ADB_SN),&quot;remove&quot;)
 		End If
-	Next x
+	Next xxx
 	&apos;
 	&apos; Unconnect with the Datasource
 	oCon.close()
